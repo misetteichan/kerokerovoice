@@ -55,49 +55,6 @@ struct __attribute__((packed)) chunk_t {
   uint32_t chunkSize;
 };
 
-bool playWave(const unsigned char* src, m5::Speaker_Class& speaker) {
-  if (!src) {
-    return false;
-  }
-  auto ptr = src;
-  auto header = reinterpret_cast<const wav_header_t*>(ptr);
-  ptr += sizeof(wav_header_t);
-  if (!header->isOK()) {
-    return false;
-  }
-  auto chunk = reinterpret_cast<const chunk_t*>(ptr);
-  ptr += sizeof(chunk_t);
-  //TODO: 範囲外チェック
-  while (memcmp(chunk->chunkId, "data", 4)) {
-    ptr += chunk->chunkSize;
-    chunk = reinterpret_cast<const chunk_t*>(ptr);
-    ptr += sizeof(chunk_t);
-  }
-
-  auto data_len = chunk->chunkSize;
-  // uint32_t front = data_len * 0.0;
-  // front -= front % header->fmt.blockAlign;
-  // uint32_t rear = data_len * 0.0;
-  // rear -= rear % header->fmt.blockAlign;
-  // data_len -= front + rear;
-  // ptr += front;
-
-  size_t idx = 0;
-  while (data_len > 0) {
-    size_t len = data_len < buf_size ? data_len : buf_size;
-    memcpy(wav_data[idx], ptr, len);
-    ptr += len;
-    data_len -= len;
-    speaker.playRaw(
-      (const int16_t*)wav_data[idx],
-      len >> 1,
-      header->fmt.samplesPerSec * 1.8, header->fmt.channels > 1, 1, 0);
-    idx += idx < (buf_num - 1) ? 1 : 0;
-  }
-
-  return true;
-}
-
 const unsigned char* find(const char* kana) {
   for (const auto& pair : mojiarray) {
     if (strcmp(pair.first, kana) == 0) {
@@ -163,6 +120,55 @@ bool KeroKero::init() {
   return true;
 }
 
+bool KeroKero::play(const unsigned char* src, m5::Speaker_Class& speaker) {
+  if (!src) {
+    return false;
+  }
+  auto ptr = src;
+  auto header = reinterpret_cast<const wav_header_t*>(ptr);
+  ptr += sizeof(wav_header_t);
+  if (!header->isOK() || header->fmt.bitsPerSample != 16) {
+    return false;
+  }
+  auto chunk = reinterpret_cast<const chunk_t*>(ptr);
+  ptr += sizeof(chunk_t);
+  //TODO: 範囲外チェック
+  while (memcmp(chunk->chunkId, "data", 4)) {
+    ptr += chunk->chunkSize;
+    chunk = reinterpret_cast<const chunk_t*>(ptr);
+    ptr += sizeof(chunk_t);
+  }
+
+  auto data_len = chunk->chunkSize;
+  // uint32_t front = data_len * 0.0;
+  // front -= front % header->fmt.blockAlign;
+  // uint32_t rear = data_len * 0.0;
+  // rear -= rear % header->fmt.blockAlign;
+  // data_len -= front + rear;
+  // ptr += front;
+
+  size_t idx = 0;
+  while (data_len > 0) {
+    size_t len = data_len < buf_size ? data_len : buf_size;
+
+    const auto hi = 8000; // 適当に変えて
+    auto level = constrain(abs(*(const int16_t*)ptr), 0, hi);
+    _level = map((level < 100 ? 0 : level), 0, hi, 0, 100);
+  
+    memcpy(wav_data[idx], ptr, len);
+    ptr += len;
+    data_len -= len;
+    
+    
+    speaker.playRaw(
+      (const int16_t*)wav_data[idx],
+      len >> 1,
+      header->fmt.samplesPerSec * 1.8, header->fmt.channels > 1, 1, 0);
+    idx += idx < (buf_num - 1) ? 1 : 0;
+  }
+  return true;
+}
+
 void KeroKero::play(const String& text, m5::Speaker_Class& speaker, void (*func)(String&)) {
   for (const auto& pair : split(text)) {
     if (func) {
@@ -173,9 +179,12 @@ void KeroKero::play(const String& text, m5::Speaker_Class& speaker, void (*func)
     if (p == nullptr) {
       continue;
     }
-    playWave(p, speaker);
+    if (!play(p, speaker)) {
+      continue;
+    }
     while (speaker.isPlaying()) {
       delay(1);
     }
+    _level = 0;
   }
 }
