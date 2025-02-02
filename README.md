@@ -8,12 +8,8 @@
 
 ## ファームウェア準備
 
-1. データ作成  
-PlatformIO build で ```./data``` にwavデータが生成されます
-1. データ書き込み  
-Upload Filesystem Image でLittleFSに書き込みます
-1. ファームウェア書き込み  
-PlatformIO upload でファームウェアを書き込みます
+普通にPlatformIOでコンパイルと書き込みしてね。  
+初回だけヘッダファイル作成で時間がかかります。
 
 ## 使い方
 

@@ -31,7 +31,7 @@ void func(String& c) {
 void loop() {
   M5.update();
   if (M5.BtnA.wasPressed()) {
-    String input("わんわん、わんだふる");
+    String input("うたっておどってファンサして");
     kerokero.play(input, M5.Speaker, func);
     M5.Display.println();
     return;
