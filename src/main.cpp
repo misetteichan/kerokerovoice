@@ -69,6 +69,31 @@ void lip_sync(void* args) {
   }
 }
 
+class Message {
+  uint32_t _last;
+  bool _enable = false;
+ public:
+  void set(const char* text) {
+    if (_enable) {
+      avatar.setSpeechText(text);
+      _last = M5.millis();
+    }
+  }
+  void update() {
+    if (_enable && _last > 0 && (M5.millis() - _last) > 2000) {
+      avatar.setSpeechText("");
+    }
+  }
+
+  void toggle() {
+    _enable = !_enable;
+    _last = 0;
+    if (!_enable) {
+      avatar.setSpeechText("");
+    }
+  }
+} message;
+
 void setup() {
   M5.begin();
   Serial.begin(115200);
@@ -99,6 +124,8 @@ void setup() {
     M5_LOGE("not support..");
     break;
   }
+
+  avatar.setSpeechFont(&fonts::efontJA_16);
 
   m5avatar::ColorPalette cp;
   auto set = [&cp](uint16_t color) {
@@ -136,6 +163,23 @@ String randomHiragana(int length) {
 
 
 void loop() {
+  message.update();
+  M5.update();
+  if (M5.Touch.isEnabled() && M5.Touch.getCount() > 0) {
+    M5.Mic.end();
+    M5.Speaker.begin();
+    M5.Speaker.tone(1000, 100);
+    message.toggle();
+    while (M5.Touch.getCount() > 0) {
+      M5.update();
+    }
+    M5.Speaker.end();
+    M5.Mic.begin();
+  }
+  if (M5.BtnA.wasPressed()) {
+    message.toggle();
+  }
+
   auto t = duration.get();
   if (t > 300) {
     M5.Mic.end();
@@ -148,6 +192,7 @@ void loop() {
 
     llm.llm.inferenceAndWaitResult(work_id, input.c_str(), [](String& result) {
       Serial.printf(">> %s\r\n", result.c_str());
+      message.set(result.c_str());
       kerokero.play(result, M5.Speaker);
     });
     avatar.setExpression(m5avatar::Expression::Sleepy);
