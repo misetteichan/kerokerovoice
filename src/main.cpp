@@ -13,9 +13,13 @@ static String work_id;
 
 class OnseiDuration {
  public:
-  void init() {
+  void init(int8_t pin = -1) {
     buffer = static_cast<int16_t*>(heap_caps_malloc(size * sizeof(int16_t), MALLOC_CAP_8BIT));
     memset(buffer, 0 , size * sizeof(int16_t));
+    _pin = pin;
+    if (_pin >= 0) {
+      pinMode(_pin, INPUT);
+    }
   }
 
   uint32_t get() {
@@ -41,8 +45,12 @@ class OnseiDuration {
   bool measuring = false;
   uint32_t start_time = 0;
   uint32_t last_time = 0;
+  int8_t _pin = -1;
 
   bool is_speaking() {
+    if (_pin >= 0 && digitalRead(_pin) == HIGH) {
+      return false;
+    }
     if (M5.Mic.isEnabled()) {
       if (M5.Mic.record(buffer, size, 16000)) {
         auto ave = 0;
@@ -101,7 +109,7 @@ void setup() {
   M5.Speaker.setVolume(120);
   M5.Speaker.end();
   M5.Mic.begin();  
-  duration.init();
+  duration.init(M5.getPin(m5::pin_name_t::port_a_scl));
 
   avatar.init();
   avatar.addTask(lip_sync, "lipSync");
