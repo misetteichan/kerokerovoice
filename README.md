@@ -22,9 +22,15 @@
 ひらがなとカタカナのみ正しく認識します。  
 それ以外の文字は適当な音をランダムで喋ります。
 
-## 注意?
+### 音声について
 
-sayコマンドで音声を作成するのでmacOSのみ対応です。  
+このライブラリには、HTS Voice "Mei" を用いて合成した音声データが含まれています。  
+音声の合成には OpenJTalk を使用しました。
 
-pre buildスクリプトのため、PlatformIOのpython環境に pydub をインストールします。  
-環境を汚されたくないよーって人はやめときましょう。
+HTS Voice "Mei"  
+released by MMDAgent Project Team  
+http://www.mmdagent.jp/  
+Copyright (c) 2009–2018  Nagoya Institute of Technology Department of Computer Science  
+
+Licensed under the Creative Commons Attribution 3.0 license.  
+See: https://creativecommons.org/licenses/by/3.0/ for datails
