@@ -1,0 +1,26 @@
+{
+  "name": "KeroKeroVoice",
+  "version": "0.0.0",
+  "description": "A library to make M5Stack speak with KeroKero voice",
+  "keywords": "M5Stack, audio, sound, kerokero",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/misetteichan/kerokerovoice.git"
+  },
+  "authors": [
+    {
+      "name": "misetteichan",
+      "url": "https://github.com/misetteichan",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "dependencies": [
+    {
+      "name": "M5Unified",
+      "version": ">=0.2.0"
+    }
+  ],
+  "frameworks": ["arduino", "espidf", "*"],
+  "platforms": ["espressif32"]
+}

@@ -1,10 +1,10 @@
 // Copyright (c) 2025 misetteichan
 // Licensed under the MIT License. See LICENSE file for details.
 
-#include "kerokero.hpp"
-#include <LittleFS.h>
+#include "kerokerovoice.hpp"
 #include <vector>
-#include "kerowav.hpp"
+#include <tuple>
+#include "wav/kerowav.hpp"
 
 namespace {
 
@@ -101,7 +101,7 @@ std::vector<std::tuple<String, const unsigned char*>> split(const String& text) 
       }
       else {
         // その他・・とりあえずランダムで
-        code = random(0x3041, 0x3097);
+        code = 0x3041 + (rand() % (0x3097 - 0x3041 + 1));
       }
       ptr = find(
         (String((char)(0xe0 | ((code >> 12) & 0x0f))) +
@@ -114,13 +114,30 @@ std::vector<std::tuple<String, const unsigned char*>> split(const String& text) 
   return r;
 }
 
-}  // namespace
-
-bool KeroKero::init() {
-  return true;
+template <typename T>
+T constrain(T value, T min, T max) {
+  if (value < min) {
+    return min;
+  }
+  if (value > max) {
+    return max;
+  }
+  return value;
 }
 
-bool KeroKero::play(const unsigned char* src, m5::Speaker_Class& speaker) {
+template <typename T>
+T map(T x, T in_min, T in_max, T out_min, T out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+}  // namespace
+
+void KeroKeroVoice::init(m5::Speaker_Class& speaker) {
+  _level = 0;
+  _speaker = &speaker;
+}
+
+bool KeroKeroVoice::play(const unsigned char* src, double rate, m5::Speaker_Class& speaker) {
   if (!src) {
     return false;
   }
@@ -138,53 +155,58 @@ bool KeroKero::play(const unsigned char* src, m5::Speaker_Class& speaker) {
     chunk = reinterpret_cast<const chunk_t*>(ptr);
     ptr += sizeof(chunk_t);
   }
-
   auto data_len = chunk->chunkSize;
-  // uint32_t front = data_len * 0.0;
-  // front -= front % header->fmt.blockAlign;
-  // uint32_t rear = data_len * 0.0;
-  // rear -= rear % header->fmt.blockAlign;
-  // data_len -= front + rear;
-  // ptr += front;
-
   size_t idx = 0;
   while (data_len > 0) {
     size_t len = data_len < buf_size ? data_len : buf_size;
 
-    const auto hi = 8000; // 適当に変えて
+    const auto hi = 8000;
     auto level = constrain(abs(*(const int16_t*)ptr), 0, hi);
     _level = map((level < 100 ? 0 : level), 0, hi, 0, 100);
   
     memcpy(wav_data[idx], ptr, len);
     ptr += len;
     data_len -= len;
-    
-    
+
     speaker.playRaw(
       (const int16_t*)wav_data[idx],
       len >> 1,
-      header->fmt.samplesPerSec * 1.8, header->fmt.channels > 1, 1, 0);
+      header->fmt.samplesPerSec * rate, header->fmt.channels > 1, 1, 0);
     idx += idx < (buf_num - 1) ? 1 : 0;
   }
   return true;
 }
 
-void KeroKero::play(const String& text, m5::Speaker_Class& speaker, void (*func)(String&)) {
+void KeroKeroVoice::play(const String& text, double rate, void (*callback)(const String&)) {
+  if (_speaker == nullptr) {
+    return;
+  }
   for (const auto& pair : split(text)) {
-    if (func) {
+    if (callback) {
       auto c = std::get<0>(pair);
-      func(c);
+      callback(c);
     }
     auto p = std::get<1>(pair);
     if (p == nullptr) {
       continue;
     }
-    if (!play(p, speaker)) {
+    if (!play(p, rate, *_speaker)) {
       continue;
     }
-    while (speaker.isPlaying()) {
-      delay(1);
+    while (_speaker->isPlaying()) {
+      vTaskDelay(1 / portTICK_PERIOD_MS);
     }
     _level = 0;
   }
+}
+
+void KeroKeroVoice::random(int length, double rate, void (*callback)(const String&)) {
+  String randomText;
+  for (int i = 0; i < length; ++i) {
+    uint16_t code = 0x3041 + (rand() % (0x3097 - 0x3041 + 1));
+    randomText += String((char)(0xe0 | ((code >> 12) & 0x0f))) +
+                  String((char)(0x80 | ((code >> 6) & 0x3f))) +
+                  String((char)(0x80 | (code & 0x3f)));
+  }
+  play(randomText, rate, callback);
 }
