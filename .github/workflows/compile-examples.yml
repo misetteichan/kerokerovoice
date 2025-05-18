@@ -1,0 +1,42 @@
+name: Compile Examples for ESP32
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        fqbn:
+          - "esp32:esp32:esp32"
+          - "esp32:esp32:esp32s3"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install ESP32 platform
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+
+      - name: Install dependencies
+        run: |
+          arduino-cli lib install "M5Unified"
+
+      - name: Compile examples
+        run: |
+          arduino-cli compile \
+            --fqbn ${{ matrix.fqbn }} \
+            --libraries . \
+            ./examples/*/*.ino
