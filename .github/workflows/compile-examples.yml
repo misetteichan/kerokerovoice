@@ -33,10 +33,19 @@ jobs:
       - name: Install dependencies
         run: |
           arduino-cli lib install "M5Unified"
+          arduino-cli lib install "M5ModuleLLM@1.3.0"
+          arduino-cli lib install "M5Stack_Avatar@0.10.0"
 
       - name: Compile examples
         run: |
+          # Basic examples
           arduino-cli compile \
             --fqbn ${{ matrix.fqbn }} \
             --libraries . \
-            ./examples/*/*.ino
+            ./examples/Basic/*.ino
+          
+          # LLM example
+          arduino-cli compile \
+            --fqbn ${{ matrix.fqbn }} \
+            --libraries . \
+            ./examples/llm/llm.ino
