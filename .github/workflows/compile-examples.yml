@@ -42,16 +42,16 @@ jobs:
           arduino-cli compile \
             --fqbn ${{ matrix.fqbn }} \
             --libraries . \
-            ./examples/Basic/*.ino
+            ./examples/Basic
           
           # LLM example
           arduino-cli compile \
             --fqbn ${{ matrix.fqbn }} \
             --libraries . \
-            ./examples/llm/llm.ino
+            ./examples/llm
           
           # RandomSpeech example
           arduino-cli compile \
             --fqbn ${{ matrix.fqbn }} \
             --libraries . \
-            ./examples/RandomSpeech/*.ino
+            ./examples/RandomSpeech
