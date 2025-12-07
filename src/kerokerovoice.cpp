@@ -210,3 +210,27 @@ void KeroKeroVoice::random(int length, double rate, void (*callback)(const Strin
   }
   play(randomText, rate, callback);
 }
+
+void KeroKeroVoice::random(double rate, bool (*condition)(void), void (*callback)(const String&)) {
+  if (condition == nullptr) {
+    return;
+  }
+  while (!condition()) {
+    const auto moji = mojiarray[rand() % mojiarray.size()];
+    if (callback) {
+      auto c = std::get<0>(moji);
+      callback(c);
+    }
+    auto p = std::get<1>(moji);
+    if (p == nullptr) {
+      continue;
+    }
+    if (!play(p, rate, *_speaker)) {
+      continue;
+    }
+    while (_speaker->isPlaying()) {
+      vTaskDelay(1 / portTICK_PERIOD_MS);
+    }
+    _level = 0;
+  }
+}

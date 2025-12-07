@@ -15,6 +15,7 @@ class KeroKeroVoice {
   int level() const { return _level; }
   void play(const String& text, double rate, void (*callback)(const String&) = nullptr);
   void random(int length, double rate, void (*callback)(const String&) = nullptr);
+  void random(double rate, bool (*condition)(void), void (*callback)(const String&) = nullptr);
  private:
   bool play(const unsigned char* src, double rate, m5::Speaker_Class& speaker);
 };
