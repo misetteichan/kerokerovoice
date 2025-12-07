@@ -49,3 +49,9 @@ jobs:
             --fqbn ${{ matrix.fqbn }} \
             --libraries . \
             ./examples/llm/llm.ino
+          
+          # RandomSpeech example
+          arduino-cli compile \
+            --fqbn ${{ matrix.fqbn }} \
+            --libraries . \
+            ./examples/RandomSpeech/*.ino
