@@ -130,14 +130,7 @@ T map(T x, T in_min, T in_max, T out_min, T out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-}  // namespace
-
-void KeroKeroVoice::init(m5::Speaker_Class& speaker) {
-  _level = 0;
-  _speaker = &speaker;
-}
-
-bool KeroKeroVoice::play(const unsigned char* src, double rate, m5::Speaker_Class& speaker) {
+bool playWave(const unsigned char* src, double rate, int& level, m5::Speaker_Class& speaker) {
   if (!src) {
     return false;
   }
@@ -161,8 +154,8 @@ bool KeroKeroVoice::play(const unsigned char* src, double rate, m5::Speaker_Clas
     size_t len = data_len < buf_size ? data_len : buf_size;
 
     const auto hi = 8000;
-    auto level = constrain(abs(*(const int16_t*)ptr), 0, hi);
-    _level = map((level < 100 ? 0 : level), 0, hi, 0, 100);
+    const auto lv = constrain(abs(*(const int16_t*)ptr), 0, hi);
+    level = map((lv < 100 ? 0 : lv), 0, hi, 0, 100);
   
     memcpy(wav_data[idx], ptr, len);
     ptr += len;
@@ -177,26 +170,38 @@ bool KeroKeroVoice::play(const unsigned char* src, double rate, m5::Speaker_Clas
   return true;
 }
 
+void playWave(const std::tuple<String, const unsigned char*> src, double rate, int& level,
+              m5::Speaker_Class& speaker, void (*callback)(const String&)) {
+  if (callback) {
+    auto c = std::get<0>(src);
+    callback(c);
+  }
+  auto p = std::get<1>(src);
+  if (p == nullptr) {
+    return;
+  }
+  if (!playWave(p, rate, level, speaker)) {
+    return;
+  }
+  while (speaker.isPlaying()) {
+    vTaskDelay(1 / portTICK_PERIOD_MS);
+  }
+  level = 0;
+}
+
+}  // namespace
+
+void KeroKeroVoice::init(m5::Speaker_Class& speaker) {
+  _level = 0;
+  _speaker = &speaker;
+}
+
 void KeroKeroVoice::play(const String& text, double rate, void (*callback)(const String&)) {
   if (_speaker == nullptr) {
     return;
   }
   for (const auto& pair : split(text)) {
-    if (callback) {
-      auto c = std::get<0>(pair);
-      callback(c);
-    }
-    auto p = std::get<1>(pair);
-    if (p == nullptr) {
-      continue;
-    }
-    if (!play(p, rate, *_speaker)) {
-      continue;
-    }
-    while (_speaker->isPlaying()) {
-      vTaskDelay(1 / portTICK_PERIOD_MS);
-    }
-    _level = 0;
+    playWave(pair, rate, _level, *_speaker, callback);
   }
 }
 
@@ -209,4 +214,14 @@ void KeroKeroVoice::random(int length, double rate, void (*callback)(const Strin
                   String((char)(0x80 | (code & 0x3f)));
   }
   play(randomText, rate, callback);
+}
+
+void KeroKeroVoice::random(double rate, bool (*condition)(void), void (*callback)(const String&)) {
+  if (condition == nullptr) {
+    return;
+  }
+  while (!condition()) {
+    const auto moji = mojiarray[rand() % mojiarray.size()];
+    playWave(moji, rate, _level, *_speaker, callback);
+  }
 }

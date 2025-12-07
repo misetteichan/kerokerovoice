@@ -38,14 +38,14 @@ jobs:
 
       - name: Compile examples
         run: |
-          # Basic examples
-          arduino-cli compile \
-            --fqbn ${{ matrix.fqbn }} \
-            --libraries . \
-            ./examples/Basic/*.ino
-          
-          # LLM example
-          arduino-cli compile \
-            --fqbn ${{ matrix.fqbn }} \
-            --libraries . \
-            ./examples/llm/llm.ino
+          set -e
+          # Find all .ino files under examples
+          IFS=$'\n' read -d '' -r -a inos < <(find ./examples -type f -name '*.ino' -print0 | xargs -0 -n1 echo) || true
+          if [ ${#inos[@]} -eq 0 ]; then
+            echo "No example sketches found."
+            exit 0
+          fi
+          for ino in "${inos[@]}"; do
+            echo "Compiling $ino"
+            arduino-cli compile --fqbn ${{ matrix.fqbn }} --libraries . "$ino" || exit 1
+          done
